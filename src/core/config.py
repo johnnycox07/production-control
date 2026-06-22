@@ -4,6 +4,8 @@ class Settings(BaseSettings):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
+    POSTGRES_HOST: str
+    POSTGRES_PORT: int
 
     RABBITMQ_DEFAULT_USER: str
     RABBITMQ_DEFAULT_PASS: str
@@ -22,7 +24,7 @@ class Settings(BaseSettings):
             f"postgresql+asyncpg://"
             f"{self.POSTGRES_USER}:"
             f"{self.POSTGRES_PASSWORD}"
-            f"@localhost:5432/"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/"
             f"{self.POSTGRES_DB}"
         )
 
