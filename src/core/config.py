@@ -12,6 +12,11 @@ class Settings(BaseSettings):
 
     MINIO_ROOT_USER: str
     MINIO_ROOT_PASSWORD: str
+    MINIO_ENDPOINT: str
+    MINIO_SECURE: bool = False
+
+    REDIS_HOST: str
+    REDIS_PORT: int = 6379
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -27,5 +32,14 @@ class Settings(BaseSettings):
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/"
             f"{self.POSTGRES_DB}"
         )
+
+    @property
+    def redis_url(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}"
+
+    @property
+    def minio_url(self) -> str:
+        protocol = "https" if self.MINIO_SECURE else "http"
+        return f"{protocol}://{self.MINIO_ENDPOINT}"
 
 settings = Settings()
