@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing_extensions import Generic, TypeVar
+from typing import Generic, TypeVar
 from ...core.database import Base
 from sqlalchemy import select
 
@@ -18,7 +18,7 @@ class BaseRepository(Generic[T]):
     async def create(self, **kwargs) -> T:
         instance = self.model(**kwargs)
         self.session.add(instance)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(instance)
         return instance
 
@@ -28,7 +28,7 @@ class BaseRepository(Generic[T]):
             return None
         for key, value in kwargs.items():
             setattr(obj, key, value)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(obj)
         return obj
 
@@ -37,7 +37,7 @@ class BaseRepository(Generic[T]):
         if not obj:
             return False
         await self.session.delete(obj)
-        await self.session.commit()
+        await self.session.flush()
         return True
 
 
