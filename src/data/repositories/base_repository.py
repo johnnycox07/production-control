@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Generic, TypeVar
-from ...core.database import Base
+from src.core.database import Base
 from sqlalchemy import select
 
 
