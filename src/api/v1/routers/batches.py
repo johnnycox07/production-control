@@ -1,6 +1,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.schemas.batch import BatchResponse, BatchCreate, BatchUpdate
@@ -21,7 +22,10 @@ async def create_batches(
     data: list[BatchCreate],
     service: BatchService = Depends(get_batch_service),
 ):
-    return await service.create_batches(data)
+    try:
+        return await service.create_batches(data)
+    except IntegrityError:
+        raise HTTPException(status_code=409, detail="Batch with this number and date already exists")
 
 
 @router.get("/", response_model=list[BatchResponse])
@@ -67,3 +71,5 @@ async def update_batch(
         return await service.update_batch(batch_id, data)
     except BatchNotFoundError:
         raise HTTPException(status_code=404, detail="Batch not found")
+    except IntegrityError:
+        raise HTTPException(status_code=409, detail="Batch with this number and date already exists")
