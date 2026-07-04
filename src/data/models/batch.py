@@ -29,6 +29,7 @@ class Batch(Base):
     )
 
     closed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
         nullable=True,
     )
 
@@ -68,10 +69,12 @@ class Batch(Base):
     )
 
     shift_start: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         nullable=False,
     )
 
     shift_end: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         nullable=False,
     )
 

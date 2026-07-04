@@ -1,5 +1,4 @@
-from datetime import date
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,37 +14,37 @@ class BatchService:
         self.batch_repo = BatchRepository(session)
 
     async def create_batches(self, data: list[BatchCreate]) -> list[Batch]:
-        batches = []
+        created_ids = []
 
         for item in data:
             work_center = await self.batch_repo.get_or_create_work_center(
-                identifier = item.work_center_id,
-                name = item.work_center,
+                identifier=item.work_center_id,
+                name=item.work_center,
             )
-
             batch_data = item.model_dump(
                 exclude={"work_center", "work_center_id"}
             )
-
             batch_data["work_center_id"] = work_center.id
-
             batch = await self.batch_repo.create(**batch_data)
-            batches.append(batch)
+            created_ids.append(batch.id)
 
         await self.session.commit()
 
-        return batches
+        result = []
+        for batch_id in created_ids:
+            batch = await self.batch_repo.get_by_id_with_products(batch_id)
+            result.append(batch)
+
+        return result
 
     async def get_batch(self, batch_id: int) -> Batch:
-        batch = await self.batch_repo.get_by_id(batch_id)
+        batch = await self.batch_repo.get_by_id_with_products(batch_id)
         if batch is None:
             raise BatchNotFoundError(batch_id)
-
         return batch
 
     async def update_batch(self, batch_id: int, data: BatchUpdate) -> Batch:
         batch = await self.batch_repo.get_by_id(batch_id)
-
         if batch is None:
             raise BatchNotFoundError(batch_id)
 
@@ -61,19 +60,16 @@ class BatchService:
                 update_data["closed_at"] = None
 
         if "work_center_id" in update_data:
-            work_center_identifier = update_data["work_center_id"]
-            work_center_name = data.work_center or ""
             work_center = await self.batch_repo.get_or_create_work_center(
-                identifier=work_center_identifier,
-                name=work_center_name,
+                identifier=update_data["work_center_id"],
+                name=data.work_center or "",
             )
             update_data["work_center_id"] = work_center.id
 
-        batch = await self.batch_repo.update(batch_id, **update_data)
+        await self.batch_repo.update(batch_id, **update_data)
         await self.session.commit()
 
-        return batch
-
+        return await self.batch_repo.get_by_id_with_products(batch_id)
 
     async def get_batches(
         self,
