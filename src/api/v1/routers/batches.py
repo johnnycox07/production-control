@@ -5,9 +5,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.schemas.batch import BatchResponse, BatchCreate, BatchUpdate
+from src.api.v1.schemas.product import ProductResponse, AggregateRequest
 from src.core.dependencies import get_db
-from src.domain.exceptions import BatchNotFoundError
+from src.domain.exceptions import BatchNotFoundError, ProductNotFoundError, ProductAlreadyAggregatedError
 from src.domain.services.batch_service import BatchService
+from src.domain.services.product_service import ProductService
 
 router = APIRouter(prefix="/batches", tags=["batches"])
 
@@ -73,3 +75,18 @@ async def update_batch(
         raise HTTPException(status_code=404, detail="Batch not found")
     except IntegrityError:
         raise HTTPException(status_code=409, detail="Batch with this number and date already exists")
+
+
+@router.post("/{batch_id}/aggregate", response_model=ProductResponse)
+async def aggregate_product(
+        batch_id: int,
+        data: AggregateRequest,
+        session: AsyncSession = Depends(get_db)
+):
+    service = ProductService(session)
+    try:
+        return await service.aggregate_product(batch_id, data.unique_code)
+    except ProductNotFoundError:
+        raise HTTPException(status_code=404, detail="Product not found")
+    except ProductAlreadyAggregatedError:
+        raise HTTPException(status_code=409, detail="Product already aggregated")

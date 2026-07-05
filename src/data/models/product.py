@@ -41,7 +41,8 @@ class Product(Base):
     )
 
     aggregated_at: Mapped[datetime | None] = mapped_column(
-        nullable=True,
+        DateTime(timezone=True),
+        nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(
