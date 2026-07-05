@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,7 +55,7 @@ class BatchService:
 
         if "is_closed" in update_data:
             if update_data["is_closed"] is True:
-                update_data["closed_at"] = datetime.utcnow()
+                update_data["closed_at"] = datetime.now(timezone.utc)
             else:
                 update_data["closed_at"] = None
 
