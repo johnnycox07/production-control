@@ -38,6 +38,19 @@ class BatchService:
             batch = await self.batch_repo.get_by_id_with_products(batch_id)
             result.append(batch)
 
+        from src.domain.services.webhook_service import WebhookService
+        webhook_service = WebhookService(self.session)
+        for batch in result:
+            await webhook_service.send_event(
+                "batch_created",
+                {
+                    "id": batch.id,
+                    "batch_number": batch.batch_number,
+                    "batch_date": str(batch.batch_date),
+                    "nomenclature": batch.nomenclature,
+                }
+            )
+
         return result
 
     async def get_batch(self, batch_id: int) -> BatchResponse:
@@ -90,7 +103,22 @@ class BatchService:
         await cache.delete_pattern("batches_list:*")
 
         updated_batch = await self.batch_repo.get_by_id_with_products(batch_id)
-        return BatchResponse.model_validate(updated_batch)
+        response = BatchResponse.model_validate(updated_batch)
+        from src.domain.services.webhook_service import WebhookService
+        webhook_service = WebhookService(self.session)
+
+        event = "batch_closed" if update_data.get("is_closed") else "batch_updated"
+        await webhook_service.send_event(
+            event,
+            {
+                "id": updated_batch.id,
+                "batch_number": updated_batch.batch_number,
+                "is_closed": updated_batch.is_closed,
+                "closed_at": str(updated_batch.closed_at) if updated_batch.closed_at else None,
+            }
+        )
+
+        return response
 
     async def get_batches(
         self,
