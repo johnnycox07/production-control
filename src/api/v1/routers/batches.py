@@ -1,15 +1,27 @@
+import os
+import tempfile
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.v1.schemas.batch import BatchResponse, BatchCreate, BatchUpdate
+from src.api.v1.schemas.batch import (
+    BatchResponse, BatchCreate, BatchUpdate,
+    AsyncAggregateRequest, ExportRequest,
+)
 from src.api.v1.schemas.product import ProductResponse, AggregateRequest
+from src.api.v1.schemas.task import TaskResponse
 from src.core.dependencies import get_db
-from src.domain.exceptions import BatchNotFoundError, ProductNotFoundError, ProductAlreadyAggregatedError
+from src.domain.exceptions import (
+    BatchNotFoundError, ProductNotFoundError, ProductAlreadyAggregatedError,
+)
 from src.domain.services.batch_service import BatchService
 from src.domain.services.product_service import ProductService
+from src.storage.minio_service import MinIOService
+from src.tasks.aggregation import aggregate_products_batch
+from src.tasks.exports import export_batches_to_file
+from src.tasks.imports import import_batches_from_file
 
 router = APIRouter(prefix="/batches", tags=["batches"])
 
@@ -90,3 +102,47 @@ async def aggregate_product(
         raise HTTPException(status_code=404, detail="Product not found")
     except ProductAlreadyAggregatedError:
         raise HTTPException(status_code=409, detail="Product already aggregated")
+
+
+@router.post("/{batch_id}/aggregate-async", response_model=TaskResponse, status_code=202)
+async def aggregate_products_async(
+    batch_id: int,
+    data: AsyncAggregateRequest,
+):
+    task = aggregate_products_batch.delay(batch_id, data.unique_codes)
+    return TaskResponse(
+        task_id=task.id,
+        status="PENDING",
+        message="Aggregation task started",
+    )
+
+
+@router.post("/import", response_model=TaskResponse, status_code=202)
+async def import_batches(file: UploadFile = File(...)):
+    minio = MinIOService()
+
+    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    object_name = f"import_{file.filename}"
+    minio.upload_file("imports", tmp_path, object_name)
+    os.unlink(tmp_path)
+
+    task = import_batches_from_file.delay(object_name)
+    return TaskResponse(
+        task_id=task.id,
+        status="PENDING",
+        message="File uploaded, import started",
+    )
+
+
+@router.post("/export", response_model=TaskResponse, status_code=202)
+async def export_batches(data: ExportRequest):
+    task = export_batches_to_file.delay(data.filters, data.format)
+    return TaskResponse(
+        task_id=task.id,
+        status="PENDING",
+        message="Export started",
+    )

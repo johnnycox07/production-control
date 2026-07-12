@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     REDIS_HOST: str
     REDIS_PORT: int = 6379
 
+    CELERY_BROKER_URL: str
+    CELERY_RESULT_BACKEND: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"

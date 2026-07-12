@@ -1,6 +1,8 @@
-from src.api.v1.schemas.product import ProductResponse
-from pydantic import BaseModel, ConfigDict, Field
 from datetime import date, datetime
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from src.api.v1.schemas.product import ProductResponse
 
 
 class BatchCreate(BaseModel):
@@ -58,3 +60,10 @@ class BatchResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AsyncAggregateRequest(BaseModel):
+    unique_codes: list[str]
+
+
+class ExportRequest(BaseModel):
+    format: str = "excel"
+    filters: dict = {}
