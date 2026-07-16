@@ -3,7 +3,7 @@ import tempfile
 from datetime import datetime, timezone, timedelta
 
 from openpyxl import Workbook
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, joinedload
 
 from src.celery_app import celery_app
@@ -19,20 +19,21 @@ SyncSession = sessionmaker(bind=sync_engine)
 def generate_batch_report(
     self,
     batch_id: int,
+    format: str = "excel",
+    user_email: str | None = None,
 ):
     from src.data.models.batch import Batch
     from src.storage.minio_service import MinIOService
 
     with SyncSession() as session:
-        batch_query = (
-            select(Batch)
+        batch = (
+            session.query(Batch)
             .options(joinedload(Batch.products))
-            .where(Batch.id == batch_id)
+            .filter(Batch.id == batch_id)
+            .first()
         )
 
-        batch = session.execute(batch_query).unique().scalar_one_or_none()
-
-        if batch is None:
+        if not batch:
             raise ValueError(f"Batch {batch_id} not found")
 
         with tempfile.NamedTemporaryFile(
@@ -72,21 +73,17 @@ def generate_batch_report(
         ws3.append(["Процент выполнения", f"{agg / total * 100:.1f}%" if total else "0%"])
 
         wb.save(tmp_path)
-        file_size = os.path.getsize(tmp_path)
 
         minio = MinIOService()
-        object_name = f"batch_{batch_id}_report_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.xlsx"
-        try:
-            file_url = minio.upload_file(
-                bucket="reports",
-                file_path=tmp_path,
-                object_name=object_name,
-                expires_days=7,
-            )
-        finally:
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+        object_name = f"batch_{batch_id}_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        file_url = minio.upload_file(
+            bucket="reports",
+            file_path=tmp_path,
+            object_name=object_name,
+            expires_days=7,
+        )
 
+        os.unlink(tmp_path)
 
     expires_at = datetime.now(timezone.utc) + timedelta(days=7)
 
@@ -94,6 +91,6 @@ def generate_batch_report(
         "success": True,
         "file_url": file_url,
         "file_name": object_name,
-        "file_size": file_size,
+        "file_size": os.path.getsize(tmp_path) if os.path.exists(tmp_path) else 0,
         "expires_at": expires_at.isoformat(),
     }

@@ -67,3 +67,8 @@ class AsyncAggregateRequest(BaseModel):
 class ExportRequest(BaseModel):
     format: str = "excel"
     filters: dict = {}
+
+
+class ExportRequest(BaseModel):
+    format: str = "excel"
+    filters: dict = {}

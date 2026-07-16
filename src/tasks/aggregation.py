@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.celery_app import celery_app
@@ -17,6 +17,7 @@ def aggregate_products_batch(
     self,
     batch_id: int,
     unique_codes: list[str],
+    user_id: int | None = None,
 ):
     from src.data.models.product import Product
 
@@ -27,6 +28,7 @@ def aggregate_products_batch(
 
     with SyncSession() as session:
         for i, code in enumerate(unique_codes):
+
             if i % 10 == 0:
                 self.update_state(
                     state="PROGRESS",
@@ -37,14 +39,16 @@ def aggregate_products_batch(
                     }
                 )
 
-            product_query = select(Product).where(
-                Product.batch_id == batch_id,
-                Product.unique_code == code,
+            product = (
+                session.query(Product)
+                .filter(
+                    Product.batch_id == batch_id,
+                    Product.unique_code == code,
+                )
+                .first()
             )
 
-            product = session.execute(product_query).scalar_one_or_none()
-
-            if product is None:
+            if not product:
                 failed += 1
                 errors.append({"code": code, "reason": "not found"})
                 continue

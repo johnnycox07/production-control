@@ -18,10 +18,6 @@ SyncSession = sessionmaker(bind=sync_engine)
 
 @shared_task(bind=True, max_retries=3)
 def send_webhook_delivery(self, delivery_id: int):
-    """
-    Отправка webhook с retry логикой и HMAC подписью.
-    bind=True — даёт доступ к self (экземпляру задачи) для retry.
-    """
     from src.data.models.webhook import WebhookDelivery, WebhookSubscription
 
     with SyncSession() as session:

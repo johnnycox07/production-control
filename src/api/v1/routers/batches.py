@@ -3,19 +3,16 @@ import tempfile
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.v1.schemas.batch import (
-    BatchResponse, BatchCreate, BatchUpdate,
-    AsyncAggregateRequest, ExportRequest,
-)
+from src.api.v1.schemas.batch import AsyncAggregateRequest
+from src.api.v1.schemas.batch import BatchResponse, BatchCreate, BatchUpdate
 from src.api.v1.schemas.product import ProductResponse, AggregateRequest
 from src.api.v1.schemas.task import TaskResponse
 from src.core.dependencies import get_db
-from src.domain.exceptions import (
-    BatchNotFoundError, ProductNotFoundError, ProductAlreadyAggregatedError,
-)
+from src.domain.exceptions import BatchNotFoundError, ProductNotFoundError, ProductAlreadyAggregatedError
 from src.domain.services.batch_service import BatchService
 from src.domain.services.product_service import ProductService
 from src.storage.minio_service import MinIOService
@@ -24,6 +21,7 @@ from src.tasks.exports import export_batches_to_file
 from src.tasks.imports import import_batches_from_file
 
 router = APIRouter(prefix="/batches", tags=["batches"])
+
 
 async def get_batch_service(
         session: AsyncSession = Depends(get_db),
@@ -117,6 +115,8 @@ async def aggregate_products_async(
     )
 
 
+# --- Import / Export ---
+
 @router.post("/import", response_model=TaskResponse, status_code=202)
 async def import_batches(file: UploadFile = File(...)):
     minio = MinIOService()
@@ -136,6 +136,11 @@ async def import_batches(file: UploadFile = File(...)):
         status="PENDING",
         message="File uploaded, import started",
     )
+
+
+class ExportRequest(BaseModel):
+    format: str = "excel"
+    filters: dict = {}
 
 
 @router.post("/export", response_model=TaskResponse, status_code=202)

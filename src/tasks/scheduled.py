@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 
-import redis
-from sqlalchemy import create_engine, select, func
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.celery_app import celery_app
@@ -10,7 +9,7 @@ from src.core.config import settings
 sync_engine = create_engine(
     settings.database_url.replace("postgresql+asyncpg", "postgresql+psycopg2")
 )
-SyncSession = sessionmaker(bind=sync_engine, expire_on_commit=False)
+SyncSession = sessionmaker(bind=sync_engine)
 
 
 @celery_app.task
@@ -19,12 +18,14 @@ def auto_close_expired_batches():
 
     now = datetime.now(timezone.utc)
     with SyncSession() as session:
-        expired_query = select(Batch).where(
-            Batch.is_closed.is_(False),
-            Batch.shift_end < now,
+        expired = (
+            session.query(Batch)
+            .filter(
+                Batch.is_closed == False,
+                Batch.shift_end < now,
+            )
+            .all()
         )
-
-        expired = session.execute(expired_query).scalars().all()
 
         for batch in expired:
             batch.is_closed = True
@@ -61,25 +62,12 @@ def update_cached_statistics():
     from src.data.models.product import Product
 
     with SyncSession() as session:
-        total_batches = session.scalar(
-            select(func.count()).select_from(Batch)
-        )
-
-        active_batches = session.scalar(
-            select(func.count())
-            .select_from(Batch)
-            .where(Batch.is_closed.is_(False))
-        )
-
-        total_products = session.scalar(
-            select(func.count()).select_from(Product)
-        )
-
-        aggregated_products = session.scalar(
-            select(func.count())
-            .select_from(Product)
-            .where(Product.is_aggregated.is_(True))
-        )
+        total_batches = session.query(Batch).count()
+        active_batches = session.query(Batch).filter(Batch.is_closed == False).count()
+        total_products = session.query(Product).count()
+        aggregated_products = session.query(Product).filter(
+            Product.is_aggregated == True
+        ).count()
 
     stats = {
         "total_batches": total_batches,
@@ -88,19 +76,14 @@ def update_cached_statistics():
         "total_products": total_products,
         "aggregated_products": aggregated_products,
         "aggregation_rate": round(
-            aggregated_products / total_products * 100,
-            2,
+            aggregated_products / total_products * 100, 2
         ) if total_products else 0,
         "cached_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    redis_client = redis.from_url(settings.redis_url)
-
-    redis_client.set(
-        "dashboard_stats",
-        json.dumps(stats),
-        ex=300,
-    )
+    import redis
+    r = redis.from_url(settings.redis_url.replace("redis://", "redis://"))
+    r.set("dashboard_stats", json.dumps(stats), ex=300)
 
     return stats
 
@@ -111,16 +94,15 @@ def retry_failed_webhooks():
     from src.tasks.webhooks import send_webhook_delivery
 
     with SyncSession() as session:
-        failed_query = (
-            select(WebhookDelivery)
+        failed = (
+            session.query(WebhookDelivery)
             .join(WebhookSubscription)
-            .where(
+            .filter(
                 WebhookDelivery.status == "failed",
                 WebhookDelivery.attempts < WebhookSubscription.retry_count,
             )
+            .all()
         )
-
-        failed = session.execute(failed_query).scalars().all()
 
         for delivery in failed:
             send_webhook_delivery.delay(delivery.id)
