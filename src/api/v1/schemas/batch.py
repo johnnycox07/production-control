@@ -69,10 +69,3 @@ class ExportRequest(BaseModel):
     filters: dict = {}
 
 
-class ExportRequest(BaseModel):
-    format: str = "excel"
-    filters: dict = {}
-
-
-class CompareBatchesRequest(BaseModel):
-    batch_ids: list[int]

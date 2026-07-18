@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.v1.schemas.batch import CompareBatchesRequest
 from src.core.dependencies import get_db
 from src.domain.exceptions import BatchNotFoundError
 from src.domain.services.analytics_service import AnalyticsService
@@ -32,7 +32,10 @@ async def get_batch_statistics(
     except BatchNotFoundError:
         raise HTTPException(status_code=404, detail="Batch not found")
 
+class CompareBatchesRequest(BaseModel):
+    batch_ids: list[int]
 
+    
 @router.post("/batches/compare")
 async def compare_batches(
     data: CompareBatchesRequest,
