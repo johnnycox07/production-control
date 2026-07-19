@@ -10,3 +10,4 @@ celery[rabbitmq]
 openpyxl
 minio
 httpx
+python-multipart==0.0.32
