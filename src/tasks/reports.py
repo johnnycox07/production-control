@@ -3,16 +3,10 @@ import tempfile
 from datetime import datetime, timezone, timedelta
 
 from openpyxl import Workbook
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, joinedload
+from sqlalchemy.orm import joinedload
 
 from src.celery_app import celery_app
-from src.core.config import settings
-
-sync_engine = create_engine(
-    settings.database_url.replace("postgresql+asyncpg", "postgresql+psycopg2")
-)
-SyncSession = sessionmaker(bind=sync_engine)
+from src.core.sync_database import SyncSessionLocal as SyncSession
 
 
 @celery_app.task(bind=True, max_retries=3)

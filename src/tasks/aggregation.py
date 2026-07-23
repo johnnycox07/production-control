@@ -1,15 +1,7 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
 from src.celery_app import celery_app
-from src.core.config import settings
-
-sync_engine = create_engine(
-    settings.database_url.replace("postgresql+asyncpg", "postgresql+psycopg2")
-)
-SyncSession = sessionmaker(bind=sync_engine)
+from src.core.sync_database import SyncSessionLocal as SyncSession
 
 
 @celery_app.task(bind=True, max_retries=3)
