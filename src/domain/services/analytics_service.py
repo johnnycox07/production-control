@@ -5,9 +5,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.cache import cache
+from src.core.exceptions import BatchNotFoundError
 from src.data.models.batch import Batch
 from src.data.models.product import Product
-from src.domain.exceptions import BatchNotFoundError
 
 
 class AnalyticsService:

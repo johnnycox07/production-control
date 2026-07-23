@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.schemas.batch import BatchCreate, BatchUpdate, BatchResponse
 from src.core.cache import cache
+from src.core.exceptions import BatchNotFoundError
 from src.data.models.batch import Batch
 from src.data.repositories.batch_repository import BatchRepository
-from src.domain.exceptions import BatchNotFoundError
 
 
 class BatchService:

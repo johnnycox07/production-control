@@ -3,10 +3,10 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.schemas.product import ProductCreate
+from src.core.exceptions import BatchNotFoundError, ProductNotFoundError, ProductAlreadyAggregatedError
 from src.data.models.product import Product
 from src.data.repositories.batch_repository import BatchRepository
 from src.data.repositories.product_repository import ProductRepository
-from src.domain.exceptions import BatchNotFoundError, ProductNotFoundError, ProductAlreadyAggregatedError
 
 
 class ProductService:

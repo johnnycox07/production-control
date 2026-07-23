@@ -12,7 +12,7 @@ from src.api.v1.schemas.batch import BatchResponse, BatchCreate, BatchUpdate
 from src.api.v1.schemas.product import ProductResponse, AggregateRequest
 from src.api.v1.schemas.task import TaskResponse
 from src.core.dependencies import get_db
-from src.domain.exceptions import BatchNotFoundError, ProductNotFoundError, ProductAlreadyAggregatedError
+from src.core.exceptions import BatchNotFoundError, ProductNotFoundError, ProductAlreadyAggregatedError
 from src.domain.services.batch_service import BatchService
 from src.domain.services.product_service import ProductService
 from src.storage.minio_service import MinIOService

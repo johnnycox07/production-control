@@ -6,11 +6,11 @@ from src.api.v1.schemas.webhook import (
     WebhookSubscriptionResponse,
     WebhookDeliveryResponse,
 )
+from src.core.exceptions import WebhookNotFoundError
 from src.data.repositories.webhook_repository import (
     WebhookDeliveryRepository,
     WebhookSubscriptionRepository,
 )
-from src.domain.exceptions import WebhookNotFoundError
 
 
 class WebhookService:

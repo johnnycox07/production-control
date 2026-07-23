@@ -8,7 +8,7 @@ from src.api.v1.schemas.webhook import (
     WebhookDeliveryResponse,
 )
 from src.core.dependencies import get_db
-from src.domain.exceptions import WebhookNotFoundError
+from src.core.exceptions import WebhookNotFoundError
 from src.domain.services.webhook_service import WebhookService
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])

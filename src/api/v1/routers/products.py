@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.schemas.product import ProductCreate, ProductResponse
 from src.core.dependencies import get_db
-from src.domain.exceptions import BatchNotFoundError
+from src.core.exceptions import BatchNotFoundError
 from src.domain.services.product_service import ProductService
 
 router = APIRouter(prefix="/products", tags=["products"])
