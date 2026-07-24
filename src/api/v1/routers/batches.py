@@ -1,6 +1,7 @@
 import os
 import tempfile
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
@@ -12,6 +13,7 @@ from src.api.v1.schemas.batch import BatchResponse, BatchCreate, BatchUpdate
 from src.api.v1.schemas.product import ProductResponse, AggregateRequest
 from src.api.v1.schemas.task import TaskResponse
 from src.core.dependencies import get_db
+from src.core.dependencies import service_factory
 from src.core.exceptions import BatchNotFoundError, ProductNotFoundError, ProductAlreadyAggregatedError
 from src.domain.services.batch_service import BatchService
 from src.domain.services.product_service import ProductService
@@ -23,16 +25,15 @@ from src.tasks.imports import import_batches_from_file
 router = APIRouter(prefix="/batches", tags=["batches"])
 
 
-async def get_batch_service(
-        session: AsyncSession = Depends(get_db),
-) -> BatchService:
-    return BatchService(session)
-
+BatchServiceDep = Annotated[
+    BatchService,
+    Depends(service_factory(BatchService)),
+]
 
 @router.post("/", response_model=list[BatchResponse], status_code=201)
 async def create_batches(
     data: list[BatchCreate],
-    service: BatchService = Depends(get_batch_service),
+    service: BatchServiceDep,
 ):
     try:
         return await service.create_batches(data)
@@ -42,6 +43,7 @@ async def create_batches(
 
 @router.get("/", response_model=list[BatchResponse])
 async def get_batches(
+    service: BatchServiceDep,
     is_closed: bool | None = None,
     batch_number: int | None = None,
     batch_date: date | None = None,
@@ -49,7 +51,6 @@ async def get_batches(
     shift: str | None = None,
     offset: int = 0,
     limit: int = 20,
-    service: BatchService = Depends(get_batch_service),
 ):
     return await service.get_batches(
         is_closed=is_closed,
@@ -65,7 +66,7 @@ async def get_batches(
 @router.get("/{batch_id}", response_model=BatchResponse)
 async def get_batch(
     batch_id: int,
-    service: BatchService = Depends(get_batch_service),
+    service: BatchServiceDep,
 ):
     try:
         return await service.get_batch(batch_id)
@@ -77,7 +78,7 @@ async def get_batch(
 async def update_batch(
     batch_id: int,
     data: BatchUpdate,
-    service: BatchService = Depends(get_batch_service),
+    service: BatchServiceDep,
 ):
     try:
         return await service.update_batch(batch_id, data)

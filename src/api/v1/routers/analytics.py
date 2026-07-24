@@ -1,23 +1,22 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.dependencies import get_db
+from src.core.dependencies import service_factory
 from src.core.exceptions import BatchNotFoundError
 from src.domain.services.analytics_service import AnalyticsService
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
-
-async def get_analytics_service(
-    session: AsyncSession = Depends(get_db),
-) -> AnalyticsService:
-    return AnalyticsService(session)
-
+AnalyticsServiceDep = Annotated[
+    AnalyticsService,
+    Depends(service_factory(AnalyticsService))
+]
 
 @router.get("/dashboard")
 async def get_dashboard(
-    service: AnalyticsService = Depends(get_analytics_service),
+    service: AnalyticsServiceDep,
 ):
     return await service.get_dashboard_statistics()
 
@@ -25,7 +24,7 @@ async def get_dashboard(
 @router.get("/batches/{batch_id}/statistics")
 async def get_batch_statistics(
     batch_id: int,
-    service: AnalyticsService = Depends(get_analytics_service),
+    service: AnalyticsServiceDep,
 ):
     try:
         return await service.get_batch_statistics(batch_id)
@@ -39,6 +38,6 @@ class CompareBatchesRequest(BaseModel):
 @router.post("/batches/compare")
 async def compare_batches(
     data: CompareBatchesRequest,
-    service: AnalyticsService = Depends(get_analytics_service),
+    service: AnalyticsServiceDep,
 ):
     return await service.compare_batches(data.batch_ids)

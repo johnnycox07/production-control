@@ -1,5 +1,6 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.schemas.webhook import (
     WebhookSubscriptionsCreate,
@@ -7,30 +8,29 @@ from src.api.v1.schemas.webhook import (
     WebhookSubscriptionResponse,
     WebhookDeliveryResponse,
 )
-from src.core.dependencies import get_db
+from src.core.dependencies import service_factory
 from src.core.exceptions import WebhookNotFoundError
 from src.domain.services.webhook_service import WebhookService
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
-
-async def get_webhook_service(
-    session: AsyncSession = Depends(get_db),
-) -> WebhookService:
-    return WebhookService(session)
+WebhookServiceDep = Annotated[
+    WebhookService,
+    Depends(service_factory(WebhookService)),
+]
 
 
 @router.post("/", response_model=WebhookSubscriptionResponse, status_code=201)
 async def create_subscription(
     data: WebhookSubscriptionsCreate,
-    service: WebhookService = Depends(get_webhook_service),
+    service: WebhookServiceDep,
 ):
     return await service.create_subscription(data)
 
 
 @router.get("/", response_model=list[WebhookSubscriptionResponse])
 async def get_subscriptions(
-    service: WebhookService = Depends(get_webhook_service),
+    service: WebhookServiceDep,
 ):
     return await service.get_subscriptions()
 
@@ -39,7 +39,7 @@ async def get_subscriptions(
 async def update_subscription(
     webhook_id: int,
     data: WebhookSubscriptionUpdate,
-    service: WebhookService = Depends(get_webhook_service),
+    service: WebhookServiceDep,
 ):
     try:
         return await service.update_subscription(webhook_id, data)
@@ -50,7 +50,7 @@ async def update_subscription(
 @router.delete("/{webhook_id}", status_code=204)
 async def delete_subscription(
     webhook_id: int,
-    service: WebhookService = Depends(get_webhook_service),
+    service: WebhookServiceDep,
 ):
     try:
         await service.delete_subscription(webhook_id)
@@ -64,6 +64,6 @@ async def delete_subscription(
 )
 async def get_deliveries(
     webhook_id: int,
-    service: WebhookService = Depends(get_webhook_service),
+    service: WebhookServiceDep,
 ):
     return await service.get_deliveries(webhook_id)
