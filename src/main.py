@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 
 from scripts.init_minio import initialize_minio_buckets
 from src.api.v1.routers.analytics import router as analytics_router
@@ -9,6 +9,7 @@ from src.api.v1.routers.products import router as products_router
 from src.api.v1.routers.tasks import router as tasks_router
 from src.api.v1.routers.webhooks import router as webhooks_router
 from src.core.database import engine
+from src.core.security import get_api_key
 
 
 @asynccontextmanager
@@ -23,11 +24,11 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.include_router(batches_router, prefix="/api/v1")
-app.include_router(products_router, prefix="/api/v1")
-app.include_router(webhooks_router, prefix="/api/v1")
-app.include_router(tasks_router, prefix="/api/v1")
-app.include_router(analytics_router, prefix="/api/v1")
+app.include_router(batches_router, prefix="/api/v1", dependencies=[Depends(get_api_key)])
+app.include_router(products_router, prefix="/api/v1", dependencies=[Depends(get_api_key)])
+app.include_router(webhooks_router, prefix="/api/v1", dependencies=[Depends(get_api_key)])
+app.include_router(tasks_router, prefix="/api/v1", dependencies=[Depends(get_api_key)])
+app.include_router(analytics_router, prefix="/api/v1", dependencies=[Depends(get_api_key)])
 
 @app.get("/health")
 async def health():

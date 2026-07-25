@@ -29,10 +29,16 @@ class Settings(BaseSettings):
     celery_broker_url: str = Field(validation_alias="CELERY_BROKER_URL")
     celery_result_backend: str = Field(validation_alias="CELERY_RESULT_BACKEND")
 
+    api_keys_raw: str = Field(validation_alias="API_KEYS")
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"
     )
+
+    @property
+    def get_api_keys(self) -> list[str]:
+        return [k.strip() for k in self.api_keys_raw.split(",")]
 
     @property
     def database_url(self) -> str:
