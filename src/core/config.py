@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     celery_result_backend: str = Field(validation_alias="CELERY_RESULT_BACKEND")
 
     api_keys_raw: str = Field(validation_alias="API_KEYS")
+
+    cors_origins: list[str] = Field(
+        default_factory=list,
+        validation_alias="CORS_ORIGINS",
+    )
     
     model_config = SettingsConfigDict(
         env_file=".env",
