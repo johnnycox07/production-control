@@ -23,7 +23,6 @@ class WebhookSubscriptionResponse(BaseModel):
     id: int
     url: str
     events: list[str]
-    secret_key: str
     is_active: bool
     retry_count: int
     timeout: int
