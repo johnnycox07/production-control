@@ -4,12 +4,11 @@ import tempfile
 import openpyxl
 
 from src.celery_app import celery_app
-
 from src.core.sync_database import SyncSessionLocal as SyncSession
 
 
 @celery_app.task(bind=True, max_retries=1)
-def import_batches_from_file(self, file_url: str, user_id: int):
+def import_batches_from_file(self, file_url: str):
     from src.data.models.batch import Batch
     from src.data.models.work_center import WorkCenter
     from src.storage.minio_service import MinIOService

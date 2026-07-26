@@ -1,3 +1,4 @@
+import asyncio
 import os
 import tempfile
 from datetime import date
@@ -82,7 +83,15 @@ async def update_batch(
         raise HTTPException(status_code=409, detail="Batch with this number and date already exists")
 
 
-@router.post("/{batch_id}/aggregate", response_model=ProductResponse)
+@router.post(
+    "/{batch_id}/aggregate",
+    response_model=ProductResponse,
+    summary="Агрегировать один продукт",
+    description=(
+        "Синхронная агрегация одного продукта по unique_code. "
+        "Используй когда нужно агрегировать единичный продукт и получить результат немедленно."
+    ),
+)
 async def aggregate_product(
         batch_id: int,
         data: AggregateRequest,
@@ -92,7 +101,17 @@ async def aggregate_product(
     return await service.aggregate_product(batch_id, data.unique_code)
 
 
-@router.post("/{batch_id}/aggregate-async", response_model=TaskResponse, status_code=202)
+@router.post(
+    "/{batch_id}/aggregate-async",
+    response_model=TaskResponse,
+    status_code=202,
+    summary="Массовая агрегация продукции",
+    description=(
+        "Асинхронная агрегация списка продуктов через Celery. "
+        "Используй когда нужно агрегировать >100 единиц. "
+        "Возвращает task_id — статус проверяй через GET /tasks/{task_id}."
+    ),
+)
 async def aggregate_products_async(
     batch_id: int,
     data: AsyncAggregateRequest,
@@ -109,16 +128,21 @@ async def aggregate_products_async(
 
 @router.post("/import", response_model=TaskResponse, status_code=202)
 async def import_batches(file: UploadFile = File(...)):
-    minio = MinIOService()
+    content = await file.read()
 
-    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
-        content = await file.read()
-        tmp.write(content)
-        tmp_path = tmp.name
+    def _save_and_upload() -> str:
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
 
-    object_name = f"import_{file.filename}"
-    minio.upload_file("imports", tmp_path, object_name)
-    os.unlink(tmp_path)
+        object_name = f"import_{file.filename}"
+        minio = MinIOService()
+        minio.upload_file("imports", tmp_path, object_name)
+        os.unlink(tmp_path)
+        return object_name
+
+    loop = asyncio.get_running_loop()
+    object_name = await loop.run_in_executor(None, _save_and_upload)
 
     task = import_batches_from_file.delay(object_name)
     return TaskResponse(
