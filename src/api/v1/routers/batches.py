@@ -14,7 +14,6 @@ from src.api.v1.schemas.product import ProductResponse, AggregateRequest
 from src.api.v1.schemas.task import TaskResponse
 from src.core.dependencies import get_db
 from src.core.dependencies import service_factory
-from src.core.exceptions import BatchNotFoundError, ProductNotFoundError, ProductAlreadyAggregatedError
 from src.domain.services.batch_service import BatchService
 from src.domain.services.product_service import ProductService
 from src.storage.minio_service import MinIOService
@@ -68,10 +67,7 @@ async def get_batch(
     batch_id: int,
     service: BatchServiceDep,
 ):
-    try:
-        return await service.get_batch(batch_id)
-    except BatchNotFoundError:
-        raise HTTPException(status_code=404, detail="Batch not found")
+    return await service.get_batch(batch_id)
 
 
 @router.patch("/{batch_id}", response_model=BatchResponse)
@@ -82,8 +78,6 @@ async def update_batch(
 ):
     try:
         return await service.update_batch(batch_id, data)
-    except BatchNotFoundError:
-        raise HTTPException(status_code=404, detail="Batch not found")
     except IntegrityError:
         raise HTTPException(status_code=409, detail="Batch with this number and date already exists")
 
@@ -95,12 +89,7 @@ async def aggregate_product(
         session: AsyncSession = Depends(get_db)
 ):
     service = ProductService(session)
-    try:
-        return await service.aggregate_product(batch_id, data.unique_code)
-    except ProductNotFoundError:
-        raise HTTPException(status_code=404, detail="Product not found")
-    except ProductAlreadyAggregatedError:
-        raise HTTPException(status_code=409, detail="Product already aggregated")
+    return await service.aggregate_product(batch_id, data.unique_code)
 
 
 @router.post("/{batch_id}/aggregate-async", response_model=TaskResponse, status_code=202)

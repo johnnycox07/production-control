@@ -11,6 +11,7 @@ from src.api.v1.routers.tasks import router as tasks_router
 from src.api.v1.routers.webhooks import router as webhooks_router
 from src.core.config import settings
 from src.core.database import engine
+from src.core.exception_handlers import register_exception_handlers
 from src.core.security import get_api_key
 
 
@@ -26,6 +27,8 @@ app = FastAPI(
     version="1.0.0",
 )
 
+register_exception_handlers(app)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -39,6 +42,7 @@ app.include_router(products_router, prefix="/api/v1", dependencies=[Depends(get_
 app.include_router(webhooks_router, prefix="/api/v1", dependencies=[Depends(get_api_key)])
 app.include_router(tasks_router, prefix="/api/v1", dependencies=[Depends(get_api_key)])
 app.include_router(analytics_router, prefix="/api/v1", dependencies=[Depends(get_api_key)])
+
 
 @app.get("/health")
 async def health():

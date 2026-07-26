@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from src.api.v1.schemas.webhook import (
     WebhookSubscriptionsCreate,
@@ -9,7 +9,6 @@ from src.api.v1.schemas.webhook import (
     WebhookDeliveryResponse,
 )
 from src.core.dependencies import service_factory
-from src.core.exceptions import WebhookNotFoundError
 from src.domain.services.webhook_service import WebhookService
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -41,10 +40,7 @@ async def update_subscription(
     data: WebhookSubscriptionUpdate,
     service: WebhookServiceDep,
 ):
-    try:
-        return await service.update_subscription(webhook_id, data)
-    except WebhookNotFoundError:
-        raise HTTPException(status_code=404, detail="Webhook not found")
+    return await service.update_subscription(webhook_id, data)
 
 
 @router.delete("/{webhook_id}", status_code=204)
@@ -52,10 +48,7 @@ async def delete_subscription(
     webhook_id: int,
     service: WebhookServiceDep,
 ):
-    try:
-        await service.delete_subscription(webhook_id)
-    except WebhookNotFoundError:
-        raise HTTPException(status_code=404, detail="Webhook not found")
+    await service.delete_subscription(webhook_id)
 
 
 @router.get(

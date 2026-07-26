@@ -1,10 +1,9 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from src.core.dependencies import service_factory
-from src.core.exceptions import BatchNotFoundError
 from src.domain.services.analytics_service import AnalyticsService
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -26,10 +25,8 @@ async def get_batch_statistics(
     batch_id: int,
     service: AnalyticsServiceDep,
 ):
-    try:
-        return await service.get_batch_statistics(batch_id)
-    except BatchNotFoundError:
-        raise HTTPException(status_code=404, detail="Batch not found")
+    return await service.get_batch_statistics(batch_id)
+
 
 class CompareBatchesRequest(BaseModel):
     batch_ids: list[int]
