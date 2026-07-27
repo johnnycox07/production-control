@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 
 from src.celery_app import celery_app
-from src.core.config import settings
 from src.core.sync_database import SyncSessionLocal as SyncSession
+from src.core.sync_redis import sync_redis_client
 
 
 @celery_app.task
@@ -74,9 +74,11 @@ def update_cached_statistics():
         "cached_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    import redis
-    r = redis.from_url(settings.redis_url.replace("redis://", "redis://"))
-    r.set("dashboard_stats", json.dumps(stats), ex=300)
+    sync_redis_client.set(
+        "dashboard_stats",
+        json.dumps(stats),
+        ex=300,
+    )
 
     return stats
 
