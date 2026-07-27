@@ -1,16 +1,17 @@
 import asyncio
 import os
 import tempfile
+import uuid
 from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.schemas.batch import AsyncAggregateRequest
 from src.api.v1.schemas.batch import BatchResponse, BatchCreate, BatchUpdate
+from src.api.v1.schemas.batch import ExportRequest
 from src.api.v1.schemas.product import ProductResponse, AggregateRequest
 from src.api.v1.schemas.task import TaskResponse
 from src.core.dependencies import get_db
@@ -24,6 +25,7 @@ from src.tasks.imports import import_batches_from_file
 
 router = APIRouter(prefix="/batches", tags=["batches"])
 
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 BatchServiceDep = Annotated[
     BatchService,
@@ -126,23 +128,35 @@ async def aggregate_products_async(
 
 # --- Import / Export ---
 
+
+
 @router.post("/import", response_model=TaskResponse, status_code=202)
 async def import_batches(file: UploadFile = File(...)):
-    content = await file.read()
+    # Проверка расширения
+    safe_ext = os.path.splitext(file.filename or "")[1].lower()
+    if safe_ext not in (".xlsx", ".xls"):
+        raise HTTPException(status_code=400, detail="Unsupported file type. Only .xlsx and .xls allowed.")
+
+    # Читаем с лимитом размера
+    content = await file.read(MAX_FILE_SIZE + 1)
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+
+    # Генерируем безопасное имя — без user input в object_name
+    object_name = f"import_{uuid.uuid4().hex}{safe_ext}"
 
     def _save_and_upload() -> str:
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=safe_ext, delete=False) as tmp:
             tmp.write(content)
             tmp_path = tmp.name
 
-        object_name = f"import_{file.filename}"
         minio = MinIOService()
         minio.upload_file("imports", tmp_path, object_name)
         os.unlink(tmp_path)
         return object_name
 
     loop = asyncio.get_running_loop()
-    object_name = await loop.run_in_executor(None, _save_and_upload)
+    await loop.run_in_executor(None, _save_and_upload)
 
     task = import_batches_from_file.delay(object_name)
     return TaskResponse(
@@ -152,14 +166,9 @@ async def import_batches(file: UploadFile = File(...)):
     )
 
 
-class ExportRequest(BaseModel):
-    format: str = "excel"
-    filters: dict = {}
-
-
 @router.post("/export", response_model=TaskResponse, status_code=202)
 async def export_batches(data: ExportRequest):
-    task = export_batches_to_file.delay(data.filters, data.format)
+    task = export_batches_to_file.delay(data.filters.model_dump(mode="json"), data.format)
     return TaskResponse(
         task_id=task.id,
         status="PENDING",

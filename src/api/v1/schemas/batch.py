@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from datetime import date as date_type
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -64,8 +65,15 @@ class AsyncAggregateRequest(BaseModel):
     unique_codes: list[str]
 
 
+class BatchFilters(BaseModel):
+    is_closed: bool | None = None
+    date_from: date_type | None = None
+    date_to: date_type | None = None
+    work_center_id: int | None = None
+
+
 class ExportRequest(BaseModel):
     format: str = "excel"
-    filters: dict = {}
+    filters: BatchFilters = BatchFilters()
 
 

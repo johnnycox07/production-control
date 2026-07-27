@@ -1,14 +1,31 @@
+import ipaddress
+import socket
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, HttpUrl, field_validator
 
 
 class WebhookSubscriptionsCreate(BaseModel):
-    url: str
+    url: HttpUrl
     events: list[str]
     secret_key: str
-    retry_count: int
-    timeout: int
+    retry_count: int = 3
+    timeout: int = 10
+
+    @field_validator("url")
+    @classmethod
+    def no_internal_hosts(cls, v: HttpUrl) -> HttpUrl:
+        host = v.host
+        try:
+            ip = socket.gethostbyname(host)
+        except socket.gaierror:
+            raise ValueError(f"Cannot resolve host: {host}")
+
+        if ipaddress.ip_address(ip).is_private:
+            raise ValueError(
+                "Webhooks to internal/private addresses are not allowed"
+            )
+        return v
 
 
 class WebhookSubscriptionUpdate(BaseModel):

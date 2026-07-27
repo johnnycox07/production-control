@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    debug: bool = Field(default=False, validation_alias="DEBUG")
     postgres_user: str = Field(validation_alias="POSTGRES_USER")
     postgres_password: str = Field(validation_alias="POSTGRES_PASSWORD")
     postgres_db: str = Field(validation_alias="POSTGRES_DB")
