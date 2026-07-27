@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from src.api.v1.schemas.webhook import (
     WebhookSubscriptionsCreate,
@@ -58,5 +58,11 @@ async def delete_subscription(
 async def get_deliveries(
     webhook_id: int,
     service: WebhookServiceDep,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
 ):
-    return await service.get_deliveries(webhook_id)
+    return await service.get_deliveries(
+        subscription_id=webhook_id,
+        offset=offset,
+        limit=limit,
+    )

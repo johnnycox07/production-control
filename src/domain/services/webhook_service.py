@@ -20,7 +20,7 @@ class WebhookService:
         self.delivery_repo = WebhookDeliveryRepository(session)
 
     async def create_subscription(
-            self, data: WebhookSubscriptionsCreate
+            self, data: WebhookSubscriptionsCreate  
     ) -> WebhookSubscriptionResponse:
         subscription = await self.subscription_repo.create(**data.model_dump())
         await self.session.commit()
@@ -55,9 +55,13 @@ class WebhookService:
         await self.session.commit()
 
     async def get_deliveries(
-            self, subscription_id: int
+            self, subscription_id: int, offset: int = 0, limit: int = 20,
 ) -> list[WebhookDeliveryResponse]:
-        deliveries = await self.delivery_repo.get_by_subscription(subscription_id)
+        deliveries = await self.delivery_repo.get_by_subscription(
+            subscription_id=subscription_id,
+            offset=offset,
+            limit=limit,
+        )
         return [WebhookDeliveryResponse.model_validate(d) for d in deliveries]
 
     async def send_event(self, event_type: str, payload: dict) -> None:

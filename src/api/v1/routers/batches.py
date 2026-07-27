@@ -5,7 +5,7 @@ import uuid
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,8 +51,8 @@ async def get_batches(
     batch_date: date | None = None,
     work_center_id: int | None = None,
     shift: str | None = None,
-    offset: int = 0,
-    limit: int = 20,
+    limit: int = Query(default=20, le=100),
+    offset: int = Query(default=0, ge=0),
 ):
     return await service.get_batches(
         is_closed=is_closed,
