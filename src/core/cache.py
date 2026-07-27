@@ -21,9 +21,8 @@ class RedisCache:
         await self.client.delete(key)
 
     async def delete_pattern(self, pattern: str) -> None:
-        keys = await self.client.keys(pattern)
-        if keys:
-            await self.client.delete(*keys)
+        async for key in self.client.scan_iter(match=pattern):
+            await self.client.delete(key)
 
 
 cache = RedisCache(redis_client)
